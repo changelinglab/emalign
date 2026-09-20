@@ -18,6 +18,7 @@ from emalign.alignment import (
     align_to_anchor,
     alignment_probability,
     collect_alignment_statistics,
+    merge_pairwise_alignments,
     GAP,
 )
 from emalign.cldf_io import AlignmentResult, CognateSet, iter_cognate_morphs
@@ -389,6 +390,10 @@ class CognateAligner:
         """
         Generate alignments for all cognate sets.
         
+        Uses multi-sequence alignment merging to ensure all forms in a cognate
+        set have consistent column structure (same number of positions with
+        aligned segments in corresponding columns).
+        
         Args:
             cognate_sets: List of cognate sets to align.
             
@@ -402,9 +407,18 @@ class CognateAligner:
             if cs_alignments is None:
                 continue
             
-            for lang_id, form_id, morph, aligned in cs_alignments.alignments:
-                # Format aligned sequence with pipe delimiters
-                aligned_form = "|".join(aligned.seq2)
+            # Extract anchor segments and pairwise alignments
+            anchor_segs = segment_ipa(cs_alignments.anchor_morph)
+            pairwise_alignments = [aligned for _, _, _, aligned in cs_alignments.alignments]
+            
+            # Merge into consistent multi-sequence alignment
+            merged = merge_pairwise_alignments(pairwise_alignments, anchor_segs)
+            
+            # merged[0] is the guide (anchor with all needed gaps)
+            # merged[1:] are the target sequences in consistent columns
+            for i, (lang_id, form_id, morph, _) in enumerate(cs_alignments.alignments):
+                # Use the merged alignment (i+1 because merged[0] is anchor)
+                aligned_form = "|".join(merged[i + 1])
                 results.append(AlignmentResult(
                     form_id=form_id,
                     cognateset_id=cs.id,

@@ -185,3 +185,110 @@ def alignment_probability(alignment: AlignedPair, weights: np.ndarray) -> float:
         Log-probability of the alignment (unnormalized).
     """
     return -alignment.score
+
+
+def merge_pairwise_alignments(
+    alignments: list[AlignedPair],
+    anchor_segs: list[str],
+) -> list[list[str]]:
+    """
+    Merge multiple pairwise alignments into consistent multi-sequence columns.
+    
+    This takes a set of pairwise alignments (anchor vs target) and produces
+    a merged alignment where all sequences share the same column structure.
+    The approach:
+    1. Build a "guide" from the anchor that includes all gaps induced by targets
+    2. Map each target's alignment to the guide positions
+    
+    Args:
+        alignments: List of AlignedPair objects from pairwise alignment.
+        anchor_segs: The original (ungapped) anchor segments.
+        
+    Returns:
+        List of aligned target sequences, all with consistent columns.
+        The first entry is the merged anchor (guide).
+    """
+    if not alignments:
+        return [anchor_segs]
+    
+    # Each alignment has anchor (seq1) with gaps inserted at different positions
+    # We need to merge these into a single guide sequence
+    
+    # Track gap positions relative to original anchor positions
+    # For each alignment, record where gaps were inserted
+    anchor_len = len(anchor_segs)
+    
+    # gap_positions[i] = set of alignments that have a gap before anchor position i
+    # We need to track cumulative gaps before each anchor position
+    max_gaps_before = [0] * (anchor_len + 1)  # gaps before position 0, 1, ..., n
+    
+    alignment_gap_maps = []  # For each alignment: list of (anchor_pos, gap_count)
+    
+    for aligned in alignments:
+        # Walk through aligned anchor (seq1) and count gaps before each position
+        gaps_before = [0] * (anchor_len + 1)
+        anchor_idx = 0
+        cumulative_gaps = 0
+        
+        for seg in aligned.seq1:
+            if seg == GAP:
+                cumulative_gaps += 1
+            else:
+                gaps_before[anchor_idx] = cumulative_gaps
+                anchor_idx += 1
+        # Gaps after last anchor position
+        gaps_before[anchor_len] = cumulative_gaps - gaps_before[anchor_len - 1] if anchor_len > 0 else cumulative_gaps
+        
+        alignment_gap_maps.append(gaps_before)
+        
+        # Update max gaps needed before each position
+        for i in range(anchor_len + 1):
+            max_gaps_before[i] = max(max_gaps_before[i], gaps_before[i])
+    
+    # Build the guide: for each anchor position, insert max_gaps_before[i] gaps
+    guide = []
+    for i, seg in enumerate(anchor_segs):
+        guide.extend([GAP] * max_gaps_before[i])
+        guide.append(seg)
+    guide.extend([GAP] * max_gaps_before[anchor_len])
+    
+    # Now map each target sequence to the guide
+    results = [guide]  # First entry is the guide/anchor
+    
+    for aligned, gap_map in zip(alignments, alignment_gap_maps):
+        target_aligned = []
+        target_iter = iter(aligned.seq2)
+        anchor_idx = 0
+        
+        for i, seg in enumerate(anchor_segs):
+            # Add gaps to match guide's gaps before this position
+            need_gaps = max_gaps_before[i]
+            have_gaps = gap_map[i]
+            
+            # Copy the gaps from target that correspond to anchor gaps
+            for _ in range(have_gaps):
+                target_aligned.append(next(target_iter, GAP))
+            
+            # Add extra gaps if guide has more gaps than this alignment
+            for _ in range(need_gaps - have_gaps):
+                target_aligned.append(GAP)
+            
+            # Add the target segment aligned with this anchor position
+            target_aligned.append(next(target_iter, GAP))
+            anchor_idx += 1
+        
+        # Handle trailing gaps
+        need_trailing = max_gaps_before[anchor_len]
+        have_trailing = gap_map[anchor_len]
+        for _ in range(have_trailing):
+            target_aligned.append(next(target_iter, GAP))
+        for _ in range(need_trailing - have_trailing):
+            target_aligned.append(GAP)
+        
+        # Consume any remaining target segments (shouldn't happen in correct alignment)
+        for seg in target_iter:
+            target_aligned.append(seg)
+        
+        results.append(target_aligned)
+    
+    return results
