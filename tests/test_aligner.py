@@ -217,6 +217,35 @@ class TestCognateAligner:
         # Gap penalty should not have changed
         assert aligner.gap_penalty == initial_gap
 
+    def test_anchor_selection_uses_segment_count(self):
+        """Test that anchor selection uses phoneme segment count, not character count.
+        
+        This is crucial for IPA handling where complex segments like aspirated
+        consonants (pʰ) are represented by multiple Unicode characters but are
+        single phonemes.
+        """
+        # Create forms where character length differs from segment count:
+        # - 'pʰej' has 4 chars but 3 segments: ['pʰ', 'e', 'j']
+        # - 'pχa' has 3 chars but 3 segments: ['p', 'χ', 'a']
+        # With character counting, 'pʰej' would win (4 > 3)
+        # With segment counting, 'pχa' wins due to lower language_id tiebreaker
+        forms = [
+            Form(id="form-lang3", language_id="3", form="pχa", morphs=["pχa"]),
+            Form(id="form-lang4", language_id="4", form="pʰej", morphs=["pʰej"]),
+        ]
+        entries = [
+            (CognateEntry(id="e3", form_id="form-lang3", cognateset_id="seg_test", morph_index=0), forms[0]),
+            (CognateEntry(id="e4", form_id="form-lang4", cognateset_id="seg_test", morph_index=0), forms[1]),
+        ]
+        cs = CognateSet(id="seg_test", entries=entries)
+        
+        aligner = CognateAligner(random_seed=42)
+        anchor = aligner._select_anchor_for_cognate_set(cs)
+        
+        # Both have 3 segments, so language_id tiebreaker selects lang 3
+        assert anchor[0] == "3"
+        assert anchor[2] == "pχa"
+
 
 class TestAlignmentFormat:
     def test_pipe_delimiter(self, simple_cognate_set):

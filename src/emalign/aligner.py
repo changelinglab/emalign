@@ -166,8 +166,11 @@ class CognateAligner:
         """
         Select the anchor language and morph for a cognate set.
         
-        Heuristic: Choose the language with the longest morph, breaking ties
-        by language frequency in the dataset.
+        Heuristic: Choose the form with the most phoneme segments. Using segment
+        count (not character count) ensures proper handling of complex IPA symbols
+        like affricates (t͡s) and aspirated consonants (pʰ).
+        
+        Ties are broken by language_id for deterministic behavior.
         
         Args:
             cognate_set: A cognate set with forms.
@@ -178,12 +181,14 @@ class CognateAligner:
         candidates = []
         for entry, morph in iter_cognate_morphs(cognate_set):
             form = next(f for e, f in cognate_set.entries if e.id == entry.id)
-            candidates.append((form.language_id, entry.form_id, morph, len(morph)))
+            # Use segment count, not character count, for anchor selection
+            segs = segment_ipa(morph)
+            candidates.append((form.language_id, entry.form_id, morph, len(segs)))
         
         if not candidates:
             return None
         
-        # Sort by morph length descending, then by language_id for stability
+        # Sort by segment count descending, then by language_id for stability
         candidates.sort(key=lambda x: (-x[3], x[0]))
         return candidates[0][:3]
     

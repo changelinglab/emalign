@@ -5,6 +5,7 @@ import pytest
 
 from emalign.features import (
     NUM_FEATURES,
+    SYLLABICITY_MISMATCH_PENALTY,
     feature_diff_vector,
     feature_distance,
     get_features,
@@ -69,6 +70,26 @@ class TestFeatureDistance:
         weights = np.ones(NUM_FEATURES) / NUM_FEATURES
         dist = feature_distance("p", "🔥", weights)
         assert dist == 2.0  # Max penalty
+    
+    def test_syllabicity_mismatch_penalty(self):
+        """Test that consonant-vowel alignment incurs a large penalty."""
+        weights = np.ones(NUM_FEATURES) / NUM_FEATURES
+        # p is a consonant [-syl], a is a vowel [+syl]
+        cv_dist = feature_distance("p", "a", weights)
+        # k and p are both consonants [-syl]
+        cc_dist = feature_distance("k", "p", weights)
+        # The C-V distance should include the syllabicity penalty
+        assert cv_dist >= SYLLABICITY_MISMATCH_PENALTY
+        # The C-C distance should NOT include the penalty
+        assert cc_dist < SYLLABICITY_MISMATCH_PENALTY
+    
+    def test_vowel_vowel_no_syllabicity_penalty(self):
+        """Test that vowel-vowel alignment does not incur syllabicity penalty."""
+        weights = np.ones(NUM_FEATURES) / NUM_FEATURES
+        # Both are vowels [+syl]
+        vv_dist = feature_distance("a", "i", weights)
+        # Should be small (just feature differences, no syllabicity penalty)
+        assert vv_dist < SYLLABICITY_MISMATCH_PENALTY
 
 
 class TestFeatureDiffVector:

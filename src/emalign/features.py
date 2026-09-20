@@ -26,6 +26,10 @@ CRITICAL_FEATURES = {"syl", "cons"}
 CRITICAL_FEATURE_INDICES = [FEATURE_INDEX[f] for f in CRITICAL_FEATURES]
 CRITICAL_FEATURE_MIN_WEIGHT = 0.15  # Minimum weight for each critical feature (15% of total)
 
+# Syllabicity mismatch penalty: consonants and vowels should NEVER align
+# This penalty is added when [syl] differs, making C-V alignment always worse than a gap
+SYLLABICITY_MISMATCH_PENALTY = 2.0
+
 # Global feature table instance
 _ft: panphon.FeatureTable | None = None
 
@@ -82,7 +86,11 @@ def feature_distance(
     Compute the weighted feature distance between two segments.
     
     The distance is computed as:
-        distance = sum(weights * |features1 - features2|)
+        distance = sum(weights * |features1 - features2|) + syllabicity_penalty
+    
+    A large penalty is added when segments differ in syllabicity (i.e., when
+    aligning a consonant with a vowel), making such alignments always worse
+    than inserting a gap.
     
     If one segment is unknown, returns a penalty value.
     
@@ -105,7 +113,14 @@ def feature_distance(
         return 2.0  # Max possible distance with normalized weights
     
     diff = np.abs(f1 - f2)
-    return float(np.dot(weights, diff))
+    distance = float(np.dot(weights, diff))
+    
+    # Add syllabicity mismatch penalty: C-V alignments are linguistically wrong
+    syl_idx = FEATURE_INDEX["syl"]
+    if f1[syl_idx] != f2[syl_idx]:
+        distance += SYLLABICITY_MISMATCH_PENALTY
+    
+    return distance
 
 
 def feature_diff_vector(seg1: str, seg2: str) -> np.ndarray | None:
