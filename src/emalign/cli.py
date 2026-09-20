@@ -39,8 +39,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--gap-penalty",
         type=float,
-        default=0.5,
-        help="Initial gap penalty for alignment (default: 0.5).",
+        default=0.9,
+        help="Initial gap penalty for alignment (default: 0.9).",
     )
     parser.add_argument(
         "--no-learn-gap",
@@ -62,8 +62,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--max-iterations",
         type=int,
-        default=10,
-        help="Maximum EM iterations (default: 10).",
+        default=40,
+        help="Maximum EM iterations (default: 40).",
     )
     parser.add_argument(
         "--convergence-threshold",

@@ -121,10 +121,10 @@ class TestCognateAligner:
         """Test default initialization."""
         aligner = CognateAligner()
         
-        assert aligner.gap_penalty == 0.5  # New default with learning
+        assert aligner.gap_penalty == 0.9
         assert aligner.learning_rate == 0.01
         assert aligner.gap_learning_rate == 0.05
-        assert aligner.max_iterations == 10
+        assert aligner.max_iterations == 40
         assert aligner.learn_gap_penalty is True
         assert aligner.weights.shape == (NUM_FEATURES,)
     

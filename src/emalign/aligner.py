@@ -129,10 +129,10 @@ class CognateAligner:
     
     def __init__(
         self,
-        gap_penalty: float = 0.5,
+        gap_penalty: float = 0.9,
         learning_rate: float = 0.01,
         gap_learning_rate: float = 0.05,
-        max_iterations: int = 10,
+        max_iterations: int = 40,
         convergence_threshold: float = 1e-4,
         learn_gap_penalty: bool = True,
         random_seed: int | None = None,
