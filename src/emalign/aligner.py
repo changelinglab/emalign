@@ -14,6 +14,7 @@ from typing import Callable
 
 from emalign.alignment import (
     AlignedPair,
+    AlignmentStatistics,
     align_to_anchor,
     alignment_probability,
     collect_alignment_statistics,
@@ -116,32 +117,43 @@ class CognateAligner:
     """
     EM-based cognate aligner with anchor language selection.
     
-    This class learns feature weights from cognate data and produces
-    alignments by selecting anchor languages and aligning other forms to them.
+    This class learns feature weights and gap penalty from cognate data and
+    produces alignments by selecting anchor languages and aligning other forms
+    to them.
     """
+    
+    # Bounds for gap penalty learning
+    GAP_PENALTY_MIN = 0.1
+    GAP_PENALTY_MAX = 2.0
     
     def __init__(
         self,
-        gap_penalty: float = 1.0,
+        gap_penalty: float = 0.5,
         learning_rate: float = 0.01,
+        gap_learning_rate: float = 0.05,
         max_iterations: int = 10,
         convergence_threshold: float = 1e-4,
+        learn_gap_penalty: bool = True,
         random_seed: int | None = None,
     ):
         """
         Initialize the aligner.
         
         Args:
-            gap_penalty: Cost for gaps in alignment.
-            learning_rate: SGD learning rate for weight updates.
+            gap_penalty: Initial cost for gaps in alignment.
+            learning_rate: SGD learning rate for feature weight updates.
+            gap_learning_rate: SGD learning rate for gap penalty updates.
             max_iterations: Maximum EM iterations.
             convergence_threshold: Stop when weight change is below this.
+            learn_gap_penalty: If True, learn gap penalty empirically.
             random_seed: Random seed for reproducibility.
         """
         self.gap_penalty = gap_penalty
         self.learning_rate = learning_rate
+        self.gap_learning_rate = gap_learning_rate
         self.max_iterations = max_iterations
         self.convergence_threshold = convergence_threshold
+        self.learn_gap_penalty = learn_gap_penalty
         self.random_seed = random_seed
         
         self.weights = init_weights(random_seed)
@@ -249,14 +261,18 @@ class CognateAligner:
     def _m_step_sgd(
         self,
         alignments: list[AlignedPair],
-    ) -> np.ndarray:
+    ) -> tuple[np.ndarray, float]:
         """
-        M-step with SGD: Update weights based on alignment statistics.
+        M-step with SGD: Update weights and gap penalty based on alignment statistics.
         
         The gradient is computed from feature differences in alignments.
         Features with larger differences should have lower weights to reduce
         their contribution to the distance metric, encouraging more
         "phonologically natural" alignments.
+        
+        Gap penalty is adjusted based on comparing gap cost to average
+        substitution cost - if gaps are too cheap relative to substitutions,
+        increase gap penalty, and vice versa.
         
         Critical features (syl, cons) have minimum weight bounds enforced to
         prevent vowel-consonant misalignments.
@@ -265,19 +281,15 @@ class CognateAligner:
             alignments: Current alignments from E-step.
             
         Returns:
-            Updated weights.
+            Tuple of (updated_weights, updated_gap_penalty).
         """
-        feature_diffs_sum, num_pairs = collect_alignment_statistics(alignments)
+        stats = collect_alignment_statistics(alignments, self.weights)
         
-        if num_pairs == 0:
-            return self.weights
+        if stats.num_substitutions == 0:
+            return self.weights, self.gap_penalty
         
-        # Gradient: features with higher average diff should be down-weighted
-        avg_diffs = feature_diffs_sum / num_pairs
-        
-        # Update rule: decrease weight for high-diff features
-        # w_new = w - lr * (avg_diff - mean(avg_diff))
-        # This pushes weights toward features that vary less across cognates
+        # Update feature weights
+        avg_diffs = stats.feature_diffs_sum / stats.num_substitutions
         gradient = avg_diffs - avg_diffs.mean()
         new_weights = self.weights - self.learning_rate * gradient
         
@@ -288,7 +300,35 @@ class CognateAligner:
         # Enforce minimum bounds on critical features (syl, cons)
         new_weights = enforce_weight_bounds(new_weights)
         
-        return new_weights
+        # Update gap penalty if learning is enabled
+        new_gap_penalty = self.gap_penalty
+        if self.learn_gap_penalty and stats.total_positions > 0:
+            # Compute gap ratio (what fraction of alignment positions are gaps)
+            gap_ratio = stats.num_gaps / stats.total_positions
+            
+            # Target: gaps should be used when substitution would be expensive
+            # If gap_penalty < avg_sub_cost, gaps are too cheap -> increase
+            # If gap_penalty > avg_sub_cost, gaps are too expensive -> decrease
+            # But we also consider the gap ratio - too many gaps suggests penalty too low
+            
+            # Gradient: positive if gap_penalty should increase
+            # Use a target gap ratio around 15-25% as reasonable for cognates
+            target_gap_ratio = 0.20
+            ratio_error = gap_ratio - target_gap_ratio
+            
+            # Also compare gap cost to substitution cost
+            cost_gradient = stats.avg_substitution_cost - self.gap_penalty
+            
+            # Combined gradient: increase gap if ratio too high OR if cheaper than subs
+            combined_gradient = 0.5 * ratio_error - 0.5 * cost_gradient
+            
+            new_gap_penalty = self.gap_penalty + self.gap_learning_rate * combined_gradient
+            
+            # Enforce bounds
+            new_gap_penalty = max(self.GAP_PENALTY_MIN, 
+                                  min(self.GAP_PENALTY_MAX, new_gap_penalty))
+        
+        return new_weights, new_gap_penalty
     
     def fit(
         self,
@@ -296,7 +336,7 @@ class CognateAligner:
         verbose: bool = False,
     ) -> "CognateAligner":
         """
-        Fit the aligner by learning feature weights via EM.
+        Fit the aligner by learning feature weights and gap penalty via EM.
         
         Args:
             cognate_sets: List of cognate sets to learn from.
@@ -307,6 +347,7 @@ class CognateAligner:
         """
         for iteration in range(self.max_iterations):
             old_weights = self.weights.copy()
+            old_gap_penalty = self.gap_penalty
             
             # E-step: compute alignments
             alignments = self._e_step(cognate_sets)
@@ -316,21 +357,23 @@ class CognateAligner:
                     print(f"Iteration {iteration + 1}: No alignments produced")
                 break
             
-            # M-step: update weights
-            self.weights = self._m_step_sgd(alignments)
+            # M-step: update weights and gap penalty
+            self.weights, self.gap_penalty = self._m_step_sgd(alignments)
             
             # Check convergence
             weight_change = np.abs(self.weights - old_weights).max()
+            gap_change = abs(self.gap_penalty - old_gap_penalty)
             
             if verbose:
                 mean_prob = self._compute_mean_log_prob(cognate_sets)
                 print(
                     f"Iteration {iteration + 1}: "
                     f"mean_log_prob={mean_prob:.4f}, "
-                    f"max_weight_change={weight_change:.6f}"
+                    f"max_weight_change={weight_change:.6f}, "
+                    f"gap_penalty={self.gap_penalty:.4f}"
                 )
             
-            if weight_change < self.convergence_threshold:
+            if weight_change < self.convergence_threshold and gap_change < self.convergence_threshold:
                 if verbose:
                     print(f"Converged after {iteration + 1} iterations")
                 break
@@ -388,7 +431,7 @@ def select_best_anchor_language(
     cognate_sets: list[CognateSet],
     aligner: CognateAligner,
     candidate_languages: list[str] | None = None,
-) -> tuple[str, float, np.ndarray]:
+) -> tuple[str, float, np.ndarray, float]:
     """
     Select the anchor language that maximizes mean alignment probability.
     
@@ -403,7 +446,7 @@ def select_best_anchor_language(
             extracts all languages from the cognate sets.
             
     Returns:
-        Tuple of (best_language_id, best_mean_prob, best_weights).
+        Tuple of (best_language_id, best_mean_prob, best_weights, best_gap_penalty).
     """
     # Collect all languages
     if candidate_languages is None:
@@ -416,14 +459,17 @@ def select_best_anchor_language(
     best_lang = None
     best_prob = float("-inf")
     best_weights = None
+    best_gap_penalty = aligner.gap_penalty
     
     for lang in candidate_languages:
         # Create aligner that forces this language as anchor
         test_aligner = CognateAligner(
             gap_penalty=aligner.gap_penalty,
             learning_rate=aligner.learning_rate,
+            gap_learning_rate=aligner.gap_learning_rate,
             max_iterations=aligner.max_iterations,
             convergence_threshold=aligner.convergence_threshold,
+            learn_gap_penalty=aligner.learn_gap_penalty,
             random_seed=aligner.random_seed,
         )
         
@@ -444,5 +490,6 @@ def select_best_anchor_language(
             best_lang = lang
             best_prob = mean_prob
             best_weights = test_aligner.weights.copy()
+            best_gap_penalty = test_aligner.gap_penalty
     
-    return best_lang, best_prob, best_weights
+    return best_lang, best_prob, best_weights, best_gap_penalty

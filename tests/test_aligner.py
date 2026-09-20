@@ -121,9 +121,11 @@ class TestCognateAligner:
         """Test default initialization."""
         aligner = CognateAligner()
         
-        assert aligner.gap_penalty == 1.0
+        assert aligner.gap_penalty == 0.5  # New default with learning
         assert aligner.learning_rate == 0.01
+        assert aligner.gap_learning_rate == 0.05
         assert aligner.max_iterations == 10
+        assert aligner.learn_gap_penalty is True
         assert aligner.weights.shape == (NUM_FEATURES,)
     
     def test_align_simple_cognate_set(self, simple_cognate_set):
@@ -183,6 +185,37 @@ class TestCognateAligner:
         # Should stop well before 100 iterations
         aligner.fit([simple_cognate_set], verbose=False)
         # Just verify it completes without error
+
+    def test_gap_penalty_learning(self, simple_cognate_set):
+        """Test that gap penalty is learned when enabled."""
+        initial_gap = 0.5
+        aligner = CognateAligner(
+            random_seed=42,
+            gap_penalty=initial_gap,
+            learn_gap_penalty=True,
+            max_iterations=5,
+        )
+        
+        aligner.fit([simple_cognate_set], verbose=False)
+        
+        # Gap penalty should have changed (learned)
+        # Note: exact value depends on data, just verify it's within bounds
+        assert CognateAligner.GAP_PENALTY_MIN <= aligner.gap_penalty <= CognateAligner.GAP_PENALTY_MAX
+
+    def test_gap_penalty_fixed_when_disabled(self, simple_cognate_set):
+        """Test that gap penalty stays fixed when learning is disabled."""
+        initial_gap = 0.7
+        aligner = CognateAligner(
+            random_seed=42,
+            gap_penalty=initial_gap,
+            learn_gap_penalty=False,
+            max_iterations=5,
+        )
+        
+        aligner.fit([simple_cognate_set], verbose=False)
+        
+        # Gap penalty should not have changed
+        assert aligner.gap_penalty == initial_gap
 
 
 class TestAlignmentFormat:

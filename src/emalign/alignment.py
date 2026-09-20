@@ -113,35 +113,61 @@ def align_to_anchor(
     return weighted_levenshtein_align(anchor_seq, target_seq, weights, gap_penalty)
 
 
+@dataclass
+class AlignmentStatistics:
+    """Statistics collected from a set of alignments."""
+    feature_diffs_sum: np.ndarray  # Sum of feature diffs for substitutions
+    num_substitutions: int          # Number of substitution pairs
+    num_gaps: int                   # Total gap count (insertions + deletions)
+    total_positions: int            # Total alignment positions
+    avg_substitution_cost: float    # Average cost of substitutions
+
+
 def collect_alignment_statistics(
     alignments: list[AlignedPair],
-) -> tuple[np.ndarray, int]:
+    weights: np.ndarray | None = None,
+) -> AlignmentStatistics:
     """
-    Collect feature difference statistics from a set of alignments.
+    Collect feature difference and gap statistics from alignments.
     
-    This computes the sum of feature differences for all aligned segment pairs
-    (excluding gaps), used for the M-step of EM.
+    This computes statistics needed for the M-step of EM, including
+    feature differences for substitutions and gap counts.
     
     Args:
         alignments: List of aligned pairs.
+        weights: Current feature weights (for computing substitution costs).
         
     Returns:
-        Tuple of (feature_diffs_sum, num_pairs) where feature_diffs_sum is
-        the sum of |f1 - f2| over all aligned pairs and num_pairs is the count.
+        AlignmentStatistics with feature diffs, substitution/gap counts.
     """
     feature_diffs_sum = np.zeros(NUM_FEATURES, dtype=np.float64)
-    num_pairs = 0
+    num_substitutions = 0
+    num_gaps = 0
+    total_positions = 0
+    total_sub_cost = 0.0
     
     for alignment in alignments:
         for s1, s2 in zip(alignment.seq1, alignment.seq2):
+            total_positions += 1
             if s1 == GAP or s2 == GAP:
-                continue
-            diff = feature_diff_vector(s1, s2)
-            if diff is not None:
-                feature_diffs_sum += diff
-                num_pairs += 1
+                num_gaps += 1
+            else:
+                diff = feature_diff_vector(s1, s2)
+                if diff is not None:
+                    feature_diffs_sum += diff
+                    num_substitutions += 1
+                    if weights is not None:
+                        total_sub_cost += float(np.dot(weights, diff))
     
-    return feature_diffs_sum, num_pairs
+    avg_sub_cost = total_sub_cost / max(num_substitutions, 1)
+    
+    return AlignmentStatistics(
+        feature_diffs_sum=feature_diffs_sum,
+        num_substitutions=num_substitutions,
+        num_gaps=num_gaps,
+        total_positions=total_positions,
+        avg_substitution_cost=avg_sub_cost,
+    )
 
 
 def alignment_probability(alignment: AlignedPair, weights: np.ndarray) -> float:

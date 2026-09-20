@@ -68,25 +68,28 @@ class TestWeightedLevenshteinAlign:
 class TestCollectAlignmentStatistics:
     def test_empty_alignments(self):
         """Test statistics from empty alignment list."""
-        diffs_sum, count = collect_alignment_statistics([])
+        stats = collect_alignment_statistics([])
         
-        np.testing.assert_array_equal(diffs_sum, np.zeros(NUM_FEATURES))
-        assert count == 0
+        np.testing.assert_array_equal(stats.feature_diffs_sum, np.zeros(NUM_FEATURES))
+        assert stats.num_substitutions == 0
+        assert stats.num_gaps == 0
     
     def test_single_alignment_with_identical_segments(self):
         """Test statistics from alignment of identical segments."""
         alignment = AlignedPair(seq1=["p"], seq2=["p"], score=0.0)
-        diffs_sum, count = collect_alignment_statistics([alignment])
+        stats = collect_alignment_statistics([alignment])
         
-        np.testing.assert_array_equal(diffs_sum, np.zeros(NUM_FEATURES))
-        assert count == 1
+        np.testing.assert_array_equal(stats.feature_diffs_sum, np.zeros(NUM_FEATURES))
+        assert stats.num_substitutions == 1
+        assert stats.num_gaps == 0
     
     def test_gaps_are_skipped(self):
-        """Test that gaps are not counted in statistics."""
+        """Test that gaps are not counted in substitution statistics."""
         alignment = AlignedPair(seq1=["p", GAP], seq2=[GAP, "t"], score=2.0)
-        diffs_sum, count = collect_alignment_statistics([alignment])
+        stats = collect_alignment_statistics([alignment])
         
-        assert count == 0  # Both positions have gaps
+        assert stats.num_substitutions == 0  # Both positions have gaps
+        assert stats.num_gaps == 2  # Both positions are gaps
 
 
 class TestAlignmentProbability:

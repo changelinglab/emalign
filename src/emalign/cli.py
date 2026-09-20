@@ -39,14 +39,25 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--gap-penalty",
         type=float,
-        default=1.0,
-        help="Gap penalty for alignment (default: 1.0).",
+        default=0.5,
+        help="Initial gap penalty for alignment (default: 0.5).",
+    )
+    parser.add_argument(
+        "--no-learn-gap",
+        action="store_true",
+        help="Disable learning gap penalty (use fixed value).",
+    )
+    parser.add_argument(
+        "--gap-learning-rate",
+        type=float,
+        default=0.05,
+        help="SGD learning rate for gap penalty (default: 0.05).",
     )
     parser.add_argument(
         "--learning-rate",
         type=float,
         default=0.01,
-        help="SGD learning rate (default: 0.01).",
+        help="SGD learning rate for feature weights (default: 0.01).",
     )
     parser.add_argument(
         "--max-iterations",
@@ -104,8 +115,10 @@ def main(argv: list[str] | None = None) -> int:
     aligner = CognateAligner(
         gap_penalty=args.gap_penalty,
         learning_rate=args.learning_rate,
+        gap_learning_rate=args.gap_learning_rate,
         max_iterations=args.max_iterations,
         convergence_threshold=args.convergence_threshold,
+        learn_gap_penalty=not args.no_learn_gap,
         random_seed=args.seed,
     )
     
@@ -113,21 +126,23 @@ def main(argv: list[str] | None = None) -> int:
     if args.select_anchor:
         if args.verbose:
             print("Selecting optimal anchor language...")
-        best_lang, best_prob, best_weights = select_best_anchor_language(
+        best_lang, best_prob, best_weights, best_gap = select_best_anchor_language(
             cognate_sets, aligner
         )
         if args.verbose:
-            print(f"Best anchor language: {best_lang} (mean_log_prob={best_prob:.4f})")
+            print(f"Best anchor language: {best_lang} (mean_log_prob={best_prob:.4f}, gap_penalty={best_gap:.4f})")
         aligner.weights = best_weights
+        aligner.gap_penalty = best_gap
     
     # Fit model and generate alignments
     if args.verbose:
-        print("Learning feature weights and generating alignments...")
+        print("Learning feature weights and gap penalty...")
     
     alignments = aligner.fit_and_align(cognate_sets, verbose=args.verbose)
     
     if args.verbose:
         print(f"Generated {len(alignments)} alignments.")
+        print(f"Final gap penalty: {aligner.gap_penalty:.4f}")
     
     # Write output
     write_alignments(alignments, args.output)
