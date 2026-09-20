@@ -41,7 +41,7 @@ def init_weights(random_seed: int | None = None) -> np.ndarray:
     """
     Initialize feature weights with small random perturbations.
     
-    Critical features (syl, cons) receive higher initial weights to ensure
+    Critical features (syl, cons) receive the HIGHEST initial weights to ensure
     proper distinction between vowels, consonants, and glides.
     
     Args:
@@ -51,13 +51,15 @@ def init_weights(random_seed: int | None = None) -> np.ndarray:
         Weights array of shape (NUM_FEATURES,).
     """
     rng = np.random.default_rng(random_seed)
-    base = 1.0 / NUM_FEATURES
-    noise = rng.uniform(-0.01, 0.01, NUM_FEATURES)
-    weights = base + noise
     
-    # Boost critical features to ensure proper phoneme class distinctions
+    # Start with small base weights for non-critical features
+    weights = np.full(NUM_FEATURES, 0.02, dtype=np.float64)
+    noise = rng.uniform(-0.005, 0.005, NUM_FEATURES)
+    weights += noise
+    
+    # Set critical features (syl, cons) to high values - these should dominate
     for idx in CRITICAL_FEATURE_INDICES:
-        weights[idx] = max(weights[idx], CRITICAL_FEATURE_MIN_WEIGHT * 1.5)
+        weights[idx] = 0.20 + rng.uniform(-0.01, 0.01)
     
     # Normalize to sum to 1
     weights = np.maximum(weights, 1e-6)
