@@ -30,6 +30,13 @@ def main(argv: list[str] | None = None) -> int:
         help="Path for output alignments CSV file.",
     )
     parser.add_argument(
+        "-l", "--langs",
+        type=str,
+        default=None,
+        help="Comma-separated list of language IDs or Glottocodes to include. "
+             "If not specified, all languages are included.",
+    )
+    parser.add_argument(
         "--gap-penalty",
         type=float,
         default=1.0,
@@ -72,18 +79,26 @@ def main(argv: list[str] | None = None) -> int:
     
     args = parser.parse_args(argv)
     
+    # Parse language filter
+    language_ids: set[str] | None = None
+    if args.langs:
+        language_ids = {lang.strip() for lang in args.langs.split(",")}
+    
     # Load data
     if args.verbose:
         print(f"Loading CLDF dataset from {args.input}...")
+        if language_ids:
+            print(f"Filtering to languages: {', '.join(sorted(language_ids))}")
     
     try:
-        forms, cognate_sets = load_cldf_dataset(args.input)
+        forms, cognate_sets, languages = load_cldf_dataset(args.input, language_ids)
     except FileNotFoundError as e:
         print(f"Error: {e}", file=sys.stderr)
         return 1
     
     if args.verbose:
-        print(f"Loaded {len(forms)} forms and {len(cognate_sets)} cognate sets.")
+        lang_count = len({f.language_id for f in forms.values()})
+        print(f"Loaded {len(forms)} forms from {lang_count} languages and {len(cognate_sets)} cognate sets.")
     
     # Create aligner
     aligner = CognateAligner(

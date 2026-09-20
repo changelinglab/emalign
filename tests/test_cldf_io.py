@@ -11,6 +11,7 @@ from emalign.cldf_io import (
     CognateEntry,
     CognateSet,
     Form,
+    Language,
     iter_cognate_morphs,
     load_cldf_dataset,
     write_alignments,
@@ -28,10 +29,11 @@ class TestLoadCldfDataset:
     )
     def test_load_tangkhulic(self):
         """Test loading the Tangkhulic CLDF dataset."""
-        forms, cognate_sets = load_cldf_dataset(TEST_DATA_PATH)
+        forms, cognate_sets, languages = load_cldf_dataset(TEST_DATA_PATH)
         
         assert len(forms) > 0
         assert len(cognate_sets) > 0
+        assert len(languages) > 0
         
         # Check form structure
         first_form = next(iter(forms.values()))
@@ -39,6 +41,11 @@ class TestLoadCldfDataset:
         assert first_form.language_id is not None
         assert first_form.form is not None
         assert isinstance(first_form.morphs, list)
+        
+        # Check language structure
+        first_lang = next(iter(languages.values()))
+        assert first_lang.id is not None
+        assert first_lang.name is not None
     
     @pytest.mark.skipif(
         not TEST_DATA_PATH.exists(),
@@ -46,13 +53,47 @@ class TestLoadCldfDataset:
     )
     def test_cognate_set_structure(self):
         """Test structure of loaded cognate sets."""
-        forms, cognate_sets = load_cldf_dataset(TEST_DATA_PATH)
+        forms, cognate_sets, _ = load_cldf_dataset(TEST_DATA_PATH)
         
         for cs in cognate_sets[:5]:  # Check first 5
             assert cs.id is not None
             assert len(cs.entries) > 0
             for entry, form in cs.entries:
                 assert entry.form_id == form.id
+    
+    @pytest.mark.skipif(
+        not TEST_DATA_PATH.exists(),
+        reason="Test data not available"
+    )
+    def test_language_filter_by_id(self):
+        """Test filtering forms by language ID."""
+        forms_all, cognate_sets_all, _ = load_cldf_dataset(TEST_DATA_PATH)
+        forms_filtered, cognate_sets_filtered, _ = load_cldf_dataset(
+            TEST_DATA_PATH, language_ids={"1", "2"}
+        )
+        
+        # Filtered should have fewer forms
+        assert len(forms_filtered) < len(forms_all)
+        
+        # All filtered forms should be from languages 1 or 2
+        for form in forms_filtered.values():
+            assert form.language_id in {"1", "2"}
+    
+    @pytest.mark.skipif(
+        not TEST_DATA_PATH.exists(),
+        reason="Test data not available"
+    )
+    def test_language_filter_by_glottocode(self):
+        """Test filtering forms by Glottocode."""
+        forms_filtered, _, languages = load_cldf_dataset(
+            TEST_DATA_PATH, language_ids={"kach1286"}  # Kachai Glottocode
+        )
+        
+        # All filtered forms should be from language with Glottocode kach1286
+        # which is language ID "1" (Kachai)
+        assert len(forms_filtered) > 0
+        for form in forms_filtered.values():
+            assert form.language_id == "1"
     
     def test_missing_file_raises(self):
         """Test that missing file raises FileNotFoundError."""

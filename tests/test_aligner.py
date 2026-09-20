@@ -3,9 +3,14 @@
 import numpy as np
 import pytest
 
-from emalign.aligner import CognateAligner, init_weights
+from emalign.aligner import CognateAligner, enforce_weight_bounds, init_weights
 from emalign.cldf_io import CognateEntry, CognateSet, Form
-from emalign.features import NUM_FEATURES
+from emalign.features import (
+    CRITICAL_FEATURE_INDICES,
+    CRITICAL_FEATURE_MIN_WEIGHT,
+    FEATURE_INDEX,
+    NUM_FEATURES,
+)
 
 
 @pytest.fixture
@@ -65,6 +70,50 @@ class TestInitWeights:
         w1 = init_weights(random_seed=42)
         w2 = init_weights(random_seed=123)
         assert not np.allclose(w1, w2)
+    
+    def test_critical_features_have_higher_initial_weights(self):
+        """Test that syl and cons features get boosted initial weights."""
+        weights = init_weights(random_seed=42)
+        syl_idx = FEATURE_INDEX["syl"]
+        cons_idx = FEATURE_INDEX["cons"]
+        
+        # Critical features should be above minimum threshold
+        assert weights[syl_idx] >= CRITICAL_FEATURE_MIN_WEIGHT
+        assert weights[cons_idx] >= CRITICAL_FEATURE_MIN_WEIGHT
+
+
+class TestEnforceWeightBounds:
+    def test_enforces_minimum_on_critical_features(self):
+        """Test that minimum weights are enforced on syl and cons."""
+        # Create weights where critical features are too low
+        weights = np.ones(NUM_FEATURES, dtype=np.float32) / NUM_FEATURES
+        for idx in CRITICAL_FEATURE_INDICES:
+            weights[idx] = 0.001  # Below minimum
+        weights /= weights.sum()
+        
+        enforced = enforce_weight_bounds(weights)
+        
+        for idx in CRITICAL_FEATURE_INDICES:
+            assert enforced[idx] >= CRITICAL_FEATURE_MIN_WEIGHT
+    
+    def test_maintains_normalization(self):
+        """Test that enforced weights still sum to 1."""
+        weights = np.ones(NUM_FEATURES, dtype=np.float32) / NUM_FEATURES
+        enforced = enforce_weight_bounds(weights)
+        
+        assert np.isclose(enforced.sum(), 1.0)
+    
+    def test_does_not_reduce_high_weights(self):
+        """Test that weights above minimum are not reduced."""
+        weights = np.ones(NUM_FEATURES, dtype=np.float32) / NUM_FEATURES
+        weights[FEATURE_INDEX["syl"]] = 0.2  # Well above minimum
+        weights /= weights.sum()
+        
+        original_syl = weights[FEATURE_INDEX["syl"]]
+        enforced = enforce_weight_bounds(weights)
+        
+        # Should maintain relative ordering
+        assert enforced[FEATURE_INDEX["syl"]] >= CRITICAL_FEATURE_MIN_WEIGHT
 
 
 class TestCognateAligner:

@@ -9,6 +9,6 @@ articulatory features.
 __version__ = "0.1.0"
 
 from emalign.aligner import CognateAligner
-from emalign.cldf_io import load_cldf_dataset, write_alignments
+from emalign.cldf_io import Language, load_cldf_dataset, write_alignments
 
-__all__ = ["CognateAligner", "load_cldf_dataset", "write_alignments"]
+__all__ = ["CognateAligner", "Language", "load_cldf_dataset", "write_alignments"]

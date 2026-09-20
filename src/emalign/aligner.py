@@ -20,7 +20,12 @@ from emalign.alignment import (
     GAP,
 )
 from emalign.cldf_io import AlignmentResult, CognateSet, iter_cognate_morphs
-from emalign.features import NUM_FEATURES, segment_ipa
+from emalign.features import (
+    NUM_FEATURES,
+    segment_ipa,
+    CRITICAL_FEATURE_INDICES,
+    CRITICAL_FEATURE_MIN_WEIGHT,
+)
 
 
 @dataclass
@@ -36,7 +41,8 @@ def init_weights(random_seed: int | None = None) -> np.ndarray:
     """
     Initialize feature weights with small random perturbations.
     
-    Weights are initialized as 1/24 + uniform noise in [-0.01, 0.01].
+    Critical features (syl, cons) receive higher initial weights to ensure
+    proper distinction between vowels, consonants, and glides.
     
     Args:
         random_seed: Optional seed for reproducibility.
@@ -48,7 +54,57 @@ def init_weights(random_seed: int | None = None) -> np.ndarray:
     base = 1.0 / NUM_FEATURES
     noise = rng.uniform(-0.01, 0.01, NUM_FEATURES)
     weights = base + noise
+    
+    # Boost critical features to ensure proper phoneme class distinctions
+    for idx in CRITICAL_FEATURE_INDICES:
+        weights[idx] = max(weights[idx], CRITICAL_FEATURE_MIN_WEIGHT * 1.5)
+    
     # Normalize to sum to 1
+    weights = np.maximum(weights, 1e-6)
+    weights /= weights.sum()
+    return weights.astype(np.float32)
+
+
+def enforce_weight_bounds(weights: np.ndarray) -> np.ndarray:
+    """
+    Enforce minimum weight bounds on critical features.
+    
+    This prevents the EM algorithm from down-weighting features that are
+    essential for distinguishing phoneme classes (vowels vs consonants).
+    
+    Uses iterative projection to ensure critical features maintain minimum
+    weights even after normalization.
+    
+    Args:
+        weights: Current weights array.
+        
+    Returns:
+        Weights with bounds enforced and renormalized.
+    """
+    weights = weights.copy().astype(np.float64)
+    
+    # Iteratively enforce bounds and renormalize
+    for _ in range(5):  # Usually converges in 1-2 iterations
+        needs_adjustment = False
+        for idx in CRITICAL_FEATURE_INDICES:
+            if weights[idx] < CRITICAL_FEATURE_MIN_WEIGHT:
+                weights[idx] = CRITICAL_FEATURE_MIN_WEIGHT
+                needs_adjustment = True
+        if not needs_adjustment:
+            break
+        
+        # Renormalize by adjusting non-critical weights
+        critical_sum = sum(weights[idx] for idx in CRITICAL_FEATURE_INDICES)
+        non_critical_indices = [i for i in range(NUM_FEATURES) if i not in CRITICAL_FEATURE_INDICES]
+        non_critical_sum = sum(weights[i] for i in non_critical_indices)
+        
+        if non_critical_sum > 0:
+            target_non_critical = 1.0 - critical_sum
+            scale = target_non_critical / non_critical_sum
+            for i in non_critical_indices:
+                weights[i] *= scale
+    
+    # Final normalization to ensure sum is exactly 1
     weights = np.maximum(weights, 1e-6)
     weights /= weights.sum()
     return weights.astype(np.float32)
@@ -200,6 +256,9 @@ class CognateAligner:
         their contribution to the distance metric, encouraging more
         "phonologically natural" alignments.
         
+        Critical features (syl, cons) have minimum weight bounds enforced to
+        prevent vowel-consonant misalignments.
+        
         Args:
             alignments: Current alignments from E-step.
             
@@ -224,7 +283,10 @@ class CognateAligner:
         new_weights = np.maximum(new_weights, 1e-6)
         new_weights /= new_weights.sum()
         
-        return new_weights.astype(np.float32)
+        # Enforce minimum bounds on critical features (syl, cons)
+        new_weights = enforce_weight_bounds(new_weights)
+        
+        return new_weights
     
     def fit(
         self,

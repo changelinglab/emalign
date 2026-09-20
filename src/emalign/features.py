@@ -17,6 +17,15 @@ FEATURE_NAMES = [
 ]
 NUM_FEATURES = len(FEATURE_NAMES)
 
+# Feature name to index mapping
+FEATURE_INDEX = {name: i for i, name in enumerate(FEATURE_NAMES)}
+
+# Critical features that distinguish major phoneme classes (vowels/consonants/glides)
+# These should maintain higher weights to prevent cross-class alignments
+CRITICAL_FEATURES = {"syl", "cons"}
+CRITICAL_FEATURE_INDICES = [FEATURE_INDEX[f] for f in CRITICAL_FEATURES]
+CRITICAL_FEATURE_MIN_WEIGHT = 0.08  # Minimum weight for critical features
+
 # Global feature table instance
 _ft: panphon.FeatureTable | None = None
 

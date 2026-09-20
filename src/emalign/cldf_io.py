@@ -38,16 +38,30 @@ class CognateSet:
     entries: list[tuple[CognateEntry, Form]]
 
 
-def load_cldf_dataset(path: str | Path) -> tuple[dict[str, Form], list[CognateSet]]:
+@dataclass
+class Language:
+    """A language with its metadata."""
+    id: str
+    name: str
+    glottocode: str | None
+
+
+def load_cldf_dataset(
+    path: str | Path,
+    language_ids: set[str] | None = None,
+) -> tuple[dict[str, Form], list[CognateSet], dict[str, Language]]:
     """
     Load a CLDF dataset from the given path.
     
     Args:
         path: Path to the CLDF metadata JSON file or directory containing it.
+        language_ids: Optional set of language IDs or Glottocodes to filter by.
+            If provided, only forms from these languages are included.
         
     Returns:
-        A tuple of (forms_dict, cognate_sets) where forms_dict maps form IDs
-        to Form objects and cognate_sets is a list of CognateSet objects.
+        A tuple of (forms_dict, cognate_sets, languages) where forms_dict maps 
+        form IDs to Form objects, cognate_sets is a list of CognateSet objects,
+        and languages maps language IDs to Language objects.
     """
     path = Path(path)
     if path.is_dir():
@@ -58,14 +72,45 @@ def load_cldf_dataset(path: str | Path) -> tuple[dict[str, Form], list[CognateSe
     
     dataset = Dataset.from_metadata(path)
     
-    # Load forms
+    # Load languages first to build ID/Glottocode mapping
+    languages: dict[str, Language] = {}
+    glottocode_to_id: dict[str, str] = {}
+    
+    if "LanguageTable" in dataset:
+        for row in dataset["LanguageTable"]:
+            lang = Language(
+                id=str(row["ID"]),
+                name=row.get("Name", ""),
+                glottocode=row.get("Glottocode"),
+            )
+            languages[lang.id] = lang
+            if lang.glottocode:
+                glottocode_to_id[lang.glottocode] = lang.id
+    
+    # Resolve language filter to internal IDs
+    allowed_language_ids: set[str] | None = None
+    if language_ids is not None:
+        allowed_language_ids = set()
+        for lang_id in language_ids:
+            if lang_id in languages:
+                allowed_language_ids.add(lang_id)
+            elif lang_id in glottocode_to_id:
+                allowed_language_ids.add(glottocode_to_id[lang_id])
+            else:
+                # Try as-is in case it matches a language ID we haven't loaded
+                allowed_language_ids.add(lang_id)
+    
+    # Load forms (filtered by language if specified)
     forms: dict[str, Form] = {}
     for row in dataset["FormTable"]:
+        lang_id = str(row["Language_ID"])
+        if allowed_language_ids is not None and lang_id not in allowed_language_ids:
+            continue
         form_str = row["Form"]
         morphs = form_str.split("+") if form_str else []
         forms[row["ID"]] = Form(
             id=row["ID"],
-            language_id=str(row["Language_ID"]),
+            language_id=lang_id,
             form=form_str,
             morphs=morphs,
         )
@@ -83,7 +128,7 @@ def load_cldf_dataset(path: str | Path) -> tuple[dict[str, Form], list[CognateSe
             cognate_groups[entry.cognateset_id] = []
         cognate_groups[entry.cognateset_id].append(entry)
     
-    # Build cognate sets with form references
+    # Build cognate sets with form references (only include filtered forms)
     cognate_sets: list[CognateSet] = []
     for cogset_id, entries in cognate_groups.items():
         form_entries = []
@@ -93,7 +138,7 @@ def load_cldf_dataset(path: str | Path) -> tuple[dict[str, Form], list[CognateSe
         if form_entries:
             cognate_sets.append(CognateSet(id=cogset_id, entries=form_entries))
     
-    return forms, cognate_sets
+    return forms, cognate_sets, languages
 
 
 @dataclass

@@ -41,6 +41,7 @@ emalign input_cldf/ output.csv --select-anchor --verbose
 
 ### Options
 
+- `-l, --langs LIST`: Comma-separated list of language IDs or Glottocodes to include
 - `--gap-penalty FLOAT`: Gap penalty for alignment (default: 1.0)
 - `--learning-rate FLOAT`: SGD learning rate (default: 0.01)
 - `--max-iterations INT`: Maximum EM iterations (default: 10)
@@ -48,6 +49,18 @@ emalign input_cldf/ output.csv --select-anchor --verbose
 - `--seed INT`: Random seed for reproducibility
 - `--select-anchor`: Try all languages as anchors and select the best
 - `-v, --verbose`: Print progress information
+
+### Language Filtering
+
+You can restrict alignments to a subset of languages using either language IDs or Glottocodes:
+
+```bash
+# Filter by language IDs
+emalign input_cldf/ output.csv --langs 1,2,3,4
+
+# Filter by Glottocodes
+emalign input_cldf/ output.csv --langs kach1286,chal1279.1,east2902
+```
 
 ### Python API
 
