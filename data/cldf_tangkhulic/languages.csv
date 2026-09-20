@@ -1,0 +1,75 @@
+ID,Name,Glottocode,Is_Proto,Group
+1,Kachai,kach1286,false,Tangkhulic
+2,Huishu,chal1279.1,false,Tangkhulic
+3,Tusom,east2902,false,Tangkhulic
+4,Ukhrul,ukhr1238,false,Tangkhulic
+5,Meithei,mani1292,false,Meithei
+6,Maring,mari1416,false,Old Kuki
+7,Khoibu,khoi1251,false,Old Kuki
+8,Kapwi,inpu1234,false,Old Kuki
+9,S. Tangkhul,unk,false,Old Kuki
+10,C. Tangkhul,gord1235,false,Tangkhulic
+11,N. Tangkul,nort3286,false,Tangkhulic
+12,Luhuppa,ukhr1238.1,false,Tangkhulic
+13,Champhung,ukhr1238.2,false,Tangkhulic
+14,Sorbung,sorb1250,false,Old Kuki
+15,Mizo,lush1249,false,KC
+16,Proto-Kuki-Chin,kuki1246,false,KC
+17,Proto-Tangkhulic,sino1246,true,Tangkhulic
+18,Proto-Tibeto-Burman,sino1245,false,TB
+20,Kuki-Chin,kuki1246,false,KC
+21,Mizo,lush1249,false,KC
+22,Mizo,lush1249,false,KC
+23,Maram,mara1379,false,Zeme
+24,Maring,mari1416,false,Old Kuki
+25,Meluri,poch1243,false,KC
+26,Thado,thad1238,false,KC
+27,Tiddim,tedi1235,false,KC
+28,Tiddim,tedi1235,false,KC
+29,Tiddim,tedi1235,false,KC
+30,Khoirao,than1255,false,Zeme
+31,Kom Rem,komi1270,false,Old Kuki
+32,Liangmei,lian1251,false,Zeme
+33,Puiron,inpu1234,false,Old Kuki
+34,Meithei,mani1292,false,Meithei
+35,Meithei,mani1292,false,Meithei
+36,Meithei,mani1292,false,Meithei
+37,Moyon,moyo1238,false,Old Kuki
+38,Mikir,karb1240,false,Karbi
+39,Mikir,karb1240,false,Karbi
+40,Mikir,karb1240,false,Karbi
+41,Mikir,karb1240,false,Karbi
+42,Mru,mruu1242,false,Mru
+43,Angami (Khonoma),anga1288,false,AP
+44,Angami (Kohima),anga1288,false,AP
+45,Angami (Kohima),anga1288,false,AP
+46,Angami Naga,anga1288,false,AP
+47,Chokri,chok1243,false,AP
+48,Chokri,chok1243,false,AP
+49,Khezha,khez1235,false,AP
+50,Khezha,khez1235,false,AP
+51,Lotha Naga,loth1237,false,Ao
+52,Lotha Naga,loth1237,false,Ao
+53,Mao,maon1238,false,AP
+54,Mzieme,mzie1235,false,Zeme
+55,Ntenyi,nort2725,false,Angami
+56,Rengma,sout2732,false,Angami
+57,Rongmei,rong1266,false,Zeme
+58,Rongmei,rong1266,false,Zeme
+59,Sangtam,sang1321,false,Ao
+60,Sema,sumi1235,false,AP
+61,Simi,sumi1235,false,AP
+62,Simi,sumi1235,false,AP
+63,Yimchungrü,yimc1240,false,Ao
+64,Zeme,zeme1240,false,Zeme
+65,Proto-Zeme,zeme1241,false,Zeme
+66,Proto-Angami-Pochuri,anga1286,false,AP
+67,Proto-Old-Kuki,oldk1252,false,Old Kuki
+68,Proto-Ao,anga1312,false,Ao
+69,Proto-Kuki-S Naga,kuki1245,false,TB
+72,Phadang,phad1238,false,Tangkhulic
+73,Challow,chal1279,false,Tangkhulic
+74,Khangoi,khan1277,false,Tangkhulic
+75,Kongai,kong1298,false,Tangkhulic
+79,Ukhrul [WP],unk,false,Tangkhulic
+80,Ukhrul [ecl],ukhr1238.1,false,Tangkhulic

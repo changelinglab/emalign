@@ -1,0 +1,255 @@
+{
+    "@context": "http://www.w3.org/ns/csvw",
+    "dc:conformsTo": "http://cldf.clld.org/v1.0/terms.rdf#Wordlist",
+    "dc:title": "Tangkhulic Comparative Dictionary",
+    "dc:license": "https://creativecommons.org/licenses/by/4.0/",
+    "tables": [
+        {
+            "url": "languages.csv",
+            "dc:conformsTo": "http://cldf.clld.org/v1.0/terms.rdf#LanguageTable",
+            "tableSchema": {
+                "columns": [
+                    {
+                        "name": "ID",
+                        "datatype": "string",
+                        "propertyUrl": "http://cldf.clld.org/v1.0/terms.rdf#id"
+                    },
+                    {
+                        "name": "Name",
+                        "datatype": "string",
+                        "propertyUrl": "http://cldf.clld.org/v1.0/terms.rdf#name"
+                    },
+                    {
+                        "name": "Glottocode",
+                        "datatype": "string",
+                        "propertyUrl": "http://cldf.clld.org/v1.0/terms.rdf#glottocode"
+                    },
+                    {
+                        "name": "Is_Proto",
+                        "datatype": "boolean"
+                    },
+                    {
+                        "name": "Group",
+                        "datatype": "string"
+                    }
+                ],
+                "primaryKey": [
+                    "ID"
+                ]
+            }
+        },
+        {
+            "url": "forms.csv",
+            "dc:conformsTo": "http://cldf.clld.org/v1.0/terms.rdf#FormTable",
+            "tableSchema": {
+                "columns": [
+                    {
+                        "name": "ID",
+                        "datatype": "string",
+                        "propertyUrl": "http://cldf.clld.org/v1.0/terms.rdf#id"
+                    },
+                    {
+                        "name": "Local_ID",
+                        "datatype": "integer",
+                        "propertyUrl": "http://purl.org/dc/terms/identifier"
+                    },
+                    {
+                        "name": "Language_ID",
+                        "datatype": "string",
+                        "propertyUrl": "http://cldf.clld.org/v1.0/terms.rdf#languageReference"
+                    },
+                    {
+                        "name": "Parameter_ID",
+                        "datatype": "string",
+                        "propertyUrl": "http://cldf.clld.org/v1.0/terms.rdf#parameterReference"
+                    },
+                    {
+                        "name": "Value",
+                        "datatype": "string",
+                        "propertyUrl": "http://cldf.clld.org/v1.0/terms.rdf#value"
+                    },
+                    {
+                        "name": "Form",
+                        "datatype": "string",
+                        "propertyUrl": "http://cldf.clld.org/v1.0/terms.rdf#form"
+                    },
+                    {
+                        "name": "Description",
+                        "datatype": "string",
+                        "propertyUrl": "http://cldf.clld.org/v1.0/terms.rdf#description"
+                    }
+                ],
+                "primaryKey": [
+                    "ID"
+                ],
+                "foreignKeys": [
+                    {
+                        "columnReference": [
+                            "Language_ID"
+                        ],
+                        "reference": {
+                            "resource": "languages.csv",
+                            "columnReference": [
+                                "ID"
+                            ]
+                        }
+                    },
+                    {
+                        "columnReference": [
+                            "Parameter_ID"
+                        ],
+                        "reference": {
+                            "resource": "parameters.csv",
+                            "columnReference": [
+                                "ID"
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "url": "parameters.csv",
+            "dc:conformsTo": "http://cldf.clld.org/v1.0/terms.rdf#ParameterTable",
+            "tableSchema": {
+                "columns": [
+                    {
+                        "name": "ID",
+                        "datatype": "string",
+                        "propertyUrl": "http://cldf.clld.org/v1.0/terms.rdf#id"
+                    },
+                    {
+                        "name": "Name",
+                        "datatype": "string",
+                        "propertyUrl": "http://cldf.clld.org/v1.0/terms.rdf#name"
+                    }
+                ],
+                "primaryKey": [
+                    "ID"
+                ]
+            }
+        },
+        {
+            "url": "etyma.csv",
+            "tableSchema": {
+                "columns": [
+                    {
+                        "name": "ID",
+                        "datatype": "integer",
+                        "propertyUrl": "http://cldf.clld.org/v1.0/terms.rdf#id"
+                    },
+                    {
+                        "name": "Name",
+                        "datatype": "string",
+                        "propertyUrl": "http://cldf.clld.org/v1.0/terms.rdf#name"
+                    },
+                    {
+                        "name": "Initial",
+                        "datatype": "string"
+                    },
+                    {
+                        "name": "Description",
+                        "datatype": "string",
+                        "propertyUrl": "http://cldf.clld.org/v1.0/terms.rdf#description"
+                    }
+                ],
+                "primaryKey": [
+                    "ID"
+                ]
+            }
+        },
+        {
+            "url": "cognatesets.csv",
+            "dc:conformsTo": "http://cldf.clld.org/v1.0/terms.rdf#CognatesetTable",
+            "tableSchema": {
+                "columns": [
+                    {
+                        "name": "ID",
+                        "datatype": "integer",
+                        "propertyUrl": "http://cldf.clld.org/v1.0/terms.rdf#id"
+                    },
+                    {
+                        "name": "Etymon_ID",
+                        "datatype": "integer"
+                    },
+                    {
+                        "name": "Description",
+                        "datatype": "string",
+                        "propertyUrl": "http://cldf.clld.org/v1.0/terms.rdf#description"
+                    }
+                ],
+                "primaryKey": [
+                    "ID"
+                ],
+                "foreignKeys": [
+                    {
+                        "columnReference": [
+                            "Etymon_ID"
+                        ],
+                        "reference": {
+                            "resource": "etyma.csv",
+                            "columnReference": [
+                                "ID"
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "url": "cognates.csv",
+            "dc:conformsTo": "http://cldf.clld.org/v1.0/terms.rdf#CognateTable",
+            "tableSchema": {
+                "columns": [
+                    {
+                        "name": "ID",
+                        "datatype": "integer",
+                        "propertyUrl": "http://cldf.clld.org/v1.0/terms.rdf#id"
+                    },
+                    {
+                        "name": "Form_ID",
+                        "datatype": "string",
+                        "propertyUrl": "http://cldf.clld.org/v1.0/terms.rdf#formReference"
+                    },
+                    {
+                        "name": "Cognateset_ID",
+                        "datatype": "integer",
+                        "propertyUrl": "http://cldf.clld.org/v1.0/terms.rdf#cognatesetReference"
+                    },
+                    {
+                        "name": "Morph_Index",
+                        "datatype": "integer",
+                        "dc:description": "Index of the morpheme in the proto-form that this reflex corresponds to (0-indexed)"
+                    }
+                ],
+                "primaryKey": [
+                    "ID"
+                ],
+                "foreignKeys": [
+                    {
+                        "columnReference": [
+                            "Form_ID"
+                        ],
+                        "reference": {
+                            "resource": "forms.csv",
+                            "columnReference": [
+                                "ID"
+                            ]
+                        }
+                    },
+                    {
+                        "columnReference": [
+                            "Cognateset_ID"
+                        ],
+                        "reference": {
+                            "resource": "cognatesets.csv",
+                            "columnReference": [
+                                "ID"
+                            ]
+                        }
+                    }
+                ]
+            }
+        }
+    ]
+}
