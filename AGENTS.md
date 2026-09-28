@@ -65,4 +65,51 @@ The agent should build Python tools for exploring and evaluating the alignments 
 3. If all tests pass, the agent should make a pull request
 4. The user retains responsibility for approving the pull request
 
+# Development Notes
 
+## Package Name
+
+The package is published to PyPI as `emalign-phonology` (since `emalign` was already taken). The import name remains `emalign`.
+
+```bash
+pip install emalign-phonology
+```
+
+```python
+from emalign import align, CognateAligner
+```
+
+## API Design
+
+The package provides two equivalent interfaces:
+
+1. **CLI**: `emalign <input> <output> [options]`
+2. **Python API**: `align(input_path, output_path, **options)`
+
+The `align()` function mirrors all CLI arguments as keyword arguments, making it easy to translate between command-line usage and programmatic use.
+
+## Building and Publishing
+
+```bash
+# Install build tools
+pip install build twine
+
+# Build package
+python -m build
+
+# Check package
+twine check dist/*
+
+# Upload to PyPI (requires PyPI credentials)
+twine upload dist/*
+```
+
+## Testing
+
+```bash
+# Run all tests
+pytest tests/ -v
+
+# Run with coverage
+pytest tests/ --cov=emalign --cov-report=term-missing
+```
