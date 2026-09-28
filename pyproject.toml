@@ -3,20 +3,34 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "emalign"
+name = "emalign-phonology"
 version = "0.1.0"
-description = "EM-based alignment of cognate sets in comparative dictionaries"
+description = "EM-based alignment of cognate sets in comparative dictionaries using articulatory features"
 readme = "README.md"
-license = {text = "MIT"}
+license = "MIT"
 requires-python = ">=3.9"
+authors = [
+    {name = "Changeling Lab", email = "changeling@example.com"},
+]
+keywords = [
+    "linguistics",
+    "phonology",
+    "alignment",
+    "cognates",
+    "historical-linguistics",
+    "CLDF",
+    "panphon",
+    "expectation-maximization",
+]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Text Processing :: Linguistic",
 ]
@@ -30,7 +44,14 @@ dependencies = [
 dev = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
+    "build>=1.0.0",
+    "twine>=4.0.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/changelinglab/emalign"
+Repository = "https://github.com/changelinglab/emalign"
+Issues = "https://github.com/changelinglab/emalign/issues"
 
 [project.scripts]
 emalign = "emalign.cli:main"
